@@ -1,0 +1,15 @@
+{
+    "domain": "hue_circadian",
+    "name": "Hue Circadian Plugin",
+    "version": "1.0",
+    "documentation": "https://github.com/RobertDWhite/hass-circadian_lighting",
+    "issue_tracker": "https://github.com/RobertDWhite/hass-circadian_lighting/issues",
+    "dependencies": [],
+    "codeowners": ["@RobertDWhite"],
+    "requirements": ["aiohue"],
+    "iot_class": "calculated",
+    "zeroconf": [
+        "_hue._tcp.local."
+      ]
+  }
+  
