@@ -10,3 +10,5 @@ This is the first attempt and iteration of a custom component written specifical
 ```
 circadian_lighting_bridge:
 ```
+
+5) Add "https://github.com/RobertDWhite/hue_circadian_lighting_bridge" to your HACS custom repositories to easily install.
