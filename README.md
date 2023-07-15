@@ -5,8 +5,5 @@ This is the first attempt and iteration of a custom component written specifical
 Add the following to your configuration.yaml
 
 ```
-hue_circadian:
-  hue_keyword: "Circadian"
-  hue_bridges:
-    - sensor_entity_id: sensor.circadian_lights
+circadian_lighting_bridge:
 ```
