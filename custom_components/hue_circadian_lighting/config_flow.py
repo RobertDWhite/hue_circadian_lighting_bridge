@@ -1,60 +1,27 @@
-"""Config flow for Hue Circadian integration."""
-import aiohue
-from aiohue import HueBridgeV2
+import logging
 from homeassistant import config_entries
-import voluptuous as vol
+from homeassistant.helpers import discovery
 
-DOMAIN = "hue_circadian"
+_LOGGER = logging.getLogger(__name__)
+
+DOMAIN = 'circadian_lighting_bridge'
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class CircadianLightingBridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
-        if user_input is None:
-            return self._show_setup_form()
+        return self.async_create_entry(title="Circadian Lighting Bridge", data={})
 
-        bridge_ip = user_input["bridge_ip"]
-        bridge_username = user_input["bridge_username"]
-        sensor_entity_id = user_input["sensor_entity_id"]
+    async def async_step_import(self, user_input):
+        """Handle a flow initialized by configuration import."""
+        return await self.async_step_user(user_input)
 
-        bridge = await self._discover_bridge(bridge_ip, bridge_username)
-        if bridge is None:
-            return self._show_setup_form({"base": "bridge_not_found"})
+    async def async_step_discovery(self, discovery_info):
+        """Handle a flow initialized by discovery."""
+        return await self.async_step_user()
 
-        bridge["sensor_entity_id"] = sensor_entity_id
 
-        return self._create_entry(bridge)
-
-    async def _discover_bridge(self, bridge_ip, bridge_username):
-        """Discover a Hue bridge."""
-        try:
-            async with HueBridgeV2(bridge_ip, bridge_username) as bridge:
-                await bridge.initialize()
-                return bridge
-        except aiohue.errors.Unauthorized:
-            return None
-
-    def _show_setup_form(self, errors=None):
-        """Show the setup form to the user."""
-        # TODO: Implement the setup form for user input
-        return self.async_show_form(
-            step_id="user", data_schema=self._get_schema(), errors=errors or {}
-        )
-
-    def _get_schema(self):
-        """Get the data schema for the setup form."""
-        # TODO: Define the data schema using Home Assistant data types
-        return vol.Schema(
-            {
-                vol.Required("bridge_ip"): str,
-                vol.Required("bridge_username"): str,
-                vol.Required("sensor_entity_id"): str,
-            }
-        )
-
-    def _create_entry(self, bridge):
-        """Create the config entry."""
-        # TODO: Create the config entry using the bridge data
-        return self.async_create_entry(
-            title=f"{bridge.bridge_id}", data={},
-        )
+async def async_setup(hass, config):
+    """Set up the Circadian Lighting Bridge component."""
+    discovery.async_listen(hass, 'circadian_lighting_bridge', CircadianLightingBridgeConfigFlow)
+    return True

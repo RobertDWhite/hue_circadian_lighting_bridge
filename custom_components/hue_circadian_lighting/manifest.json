@@ -1,6 +1,6 @@
 {
-    "domain": "hue_circadian",
-    "name": "Hue Circadian Plugin",
+    "domain": "circadian_lighting_bridge",
+    "name": "Circadian Lighting Bridge",
     "version": "1.0",
     "documentation": "https://github.com/RobertDWhite/hass-circadian_lighting",
     "issue_tracker": "https://github.com/RobertDWhite/hass-circadian_lighting/issues",
