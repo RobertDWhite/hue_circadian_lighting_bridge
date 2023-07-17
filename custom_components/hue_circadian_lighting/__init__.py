@@ -13,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'circadian_lighting_bridge'
 BRIDGE_DATA_KEY = "circadian_lighting_bridge_bridge"
+ENTITY_DOMAIN = "switch"
+ENTITY_PREFIX = "circadian_lighting"
 
 
 async def async_setup(hass, config):
@@ -78,20 +80,68 @@ async def update_scene_lights(session, hue_gateway, key, scene, brightness, xy, 
                         _LOGGER.error(f"light id: {val} body {body} status code: {r_response.status}")
 
 
+
 async def update_hue_scenes(hass, new_state):
     try:
         bridges = get_hue_gateway_and_key()
 
         async with ClientSession() as session:
+            await asyncio.sleep(10)
             tasks = []
+
+            switches = [
+                entity_id
+                for entity_id in hass.states.async_entity_ids("switch")
+                if entity_id.startswith("switch.circadian_lighting")
+            ]
+
+            brightness = None
+
+            for switch in switches:
+                switch_state = hass.states.get(switch)
+                brightness = switch_state.attributes.get('brightness')
+                if brightness is not None:
+                    _LOGGER.info(
+                        "Found switch '%s' with brightness: %s",
+                        switch,
+                        brightness,
+                    )
+                    break
+            else:
+                _LOGGER.info("No switch found with brightness.")
+
+            if brightness is None:
+                if new_state and new_state.attributes.get("brightness"):
+                    log_message = str(new_state)
+                    brightness_match = re.search(r"brightness=(\d+)", log_message, re.IGNORECASE)
+                    if brightness_match:
+                        brightness = int(brightness_match.group(1))
+                        _LOGGER.info(
+                            "Extracted brightness from log message: %s",
+                            brightness,
+                        )
+                    else:
+                        brightness = new_state.attributes.get("brightness")
+                        _LOGGER.info(
+                            "Extracted brightness from state attributes: %s",
+                            brightness,
+                        )
+                else:
+                    _LOGGER.info("No switch found with brightness and no valid brightness value extracted.")
+
+            if brightness is None or brightness == "Unknown":
+                brightness = get_brightness(hass, new_state)
+                _LOGGER.info(
+                    "Using get_brightness function. Calculated brightness: %s",
+                    brightness,
+                )
+
+            xy = get_xy_color(hass, new_state)
+            mired = get_colortemp(hass, new_state)
 
             for bridge_ip, bridge_username in bridges:
                 hue_gateway = bridge_ip
                 key = bridge_username
-
-                brightness = get_brightness(hass, new_state)
-                xy = get_xy_color(hass, new_state)
-                mired = get_colortemp(hass, new_state)
 
                 url = f"http://{hue_gateway}/api/{key}/scenes"
                 async with session.get(url) as response:
@@ -103,13 +153,30 @@ async def update_hue_scenes(hass, new_state):
                             scenes.append(val)
 
                     for val in scenes:
-                        tasks.append(update_scene_lights(session, hue_gateway, key, val, brightness, xy, mired))
+                        _LOGGER.info(
+                            "Updating scene '%s' with brightness: %s, xy: %s, colortemp: %s",
+                            val,
+                            brightness if brightness is not None else "N/A",
+                            xy,
+                            mired,
+                        )
+
+                        tasks.append(
+                            update_scene_lights(
+                                session,
+                                hue_gateway,
+                                key,
+                                val,
+                                brightness,
+                                xy,
+                                mired,
+                            )
+                        )
 
             await asyncio.gather(*tasks)
 
     except Exception as e:
         raise e
-
 
 def get_colortemp(hass, new_state):
     entity_id = 'sensor.circadian_values'
@@ -121,7 +188,6 @@ def get_colortemp(hass, new_state):
     if colortemp_kelvin is None:
         raise ValueError(f'colortemp attribute not found for entity {entity_id}')
 
-    # Convert Kelvin to Mireds (Philips Hue uses Mireds)
     colortemp_mireds = int(round(1000000 / colortemp_kelvin))
 
     return colortemp_mireds
@@ -198,7 +264,7 @@ async def async_setup_bridge(hass, config_entry):
                         "Retrying connection to the Philips Hue bridge at %s...",
                         bridge_ip,
                     )
-                    await asyncio.sleep(5)  # Wait for 5 seconds before retrying
+                    await asyncio.sleep(5)
             return False
 
         if not await retry_connect():
